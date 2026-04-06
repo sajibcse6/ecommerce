@@ -6,6 +6,7 @@ import (
 
 	"ecommerce/internal/config"
 	"ecommerce/internal/modules/user"
+	"ecommerce/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,6 +20,10 @@ type Server struct {
 
 func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 	r := chi.NewRouter()
+
+	// Register middleware (Order Matters)
+	r.Use(middleware.Recovery)
+	r.Use(middleware.Logger)
 
 	s := &Server{
 		router: r,
@@ -34,6 +39,11 @@ func New(cfg *config.Config, db *pgxpool.Pool) *Server {
 func (s *Server) registerRoutes() {
 	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
+	})
+
+	// Test Route
+	s.router.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
+		panic("something broke")
 	})
 
 	userRepo := user.NewRepository(s.db)
