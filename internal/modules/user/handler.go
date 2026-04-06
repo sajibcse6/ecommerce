@@ -6,6 +6,9 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+
+	"ecommerce/internal/pkg/response"
+	"ecommerce/internal/pkg/validator"
 )
 
 type Handler struct {
@@ -24,38 +27,55 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&input);
 	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+
+	// Validation
+	errs := validator.ValidationErrors{}
+
+	validator.Required(input.Name, "name", errs)
+	validator.Required(input.Email, "email", errs)
+	validator.Email(input.Email, "email", errs)
+
+	if len(errs) > 0 {
+		response.Error(w, http.StatusBadRequest, errs)
 		return
 	}
 
 	user, err := h.service.CreateUser(r.Context(), input.Name, input.Email)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	json.NewEncoder(w).Encode(user)
+	response.JSON(w, http.StatusCreated, user)
 }
 
 func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.GetUsers(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	json.NewEncoder(w).Encode(users)
+	response.JSON(w, http.StatusOK, users)
 }
 
 func (h *Handler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "id")
-	id, _ := strconv.ParseInt(idParam, 10, 64)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 
-	user, err := h.service.GetUserByID(r.Context(), id)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		response.Error(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	json.NewEncoder(w).Encode(user)
+	user, err := h.service.GetUserByID(r.Context(), id)
+	if err != nil {
+		response.Error(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, user)
 }
