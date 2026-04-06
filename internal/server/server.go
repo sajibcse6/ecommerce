@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"ecommerce/internal/config"
+	"ecommerce/internal/modules/user"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,6 +35,12 @@ func (s *Server) registerRoutes() {
 	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
+
+	userRepo := user.NewRepository(s.db)
+	userService := user.NewService(userRepo)
+	userHandler := user.NewHandler(userService)
+
+	user.RegisterRoutes(s.router, userHandler)
 }
 
 func (s *Server) Start() error {
