@@ -22,6 +22,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name string `json:"name"`
 		Email string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	json.NewDecoder(r.Body).Decode(&input)
@@ -30,13 +31,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	validator.Required(input.Name, "name", errs)
 	validator.Required(input.Email, "email", errs)
 	validator.Email(input.Email, "email", errs)
+	validator.Required(input.Password, "password", errs)
+
+	if len(input.Password) < 6 {
+		errs["password"] = "password must be at least 6 characters"
+	}
 
 	if len(errs) > 0 {
 		response.Error(w, http.StatusBadRequest, errs)
 		return
 	}
 
-	user, err := h.service.Register(r.Context(), input.Name, input.Email)
+	user, err := h.service.Register(r.Context(), input.Name, input.Email, input.Password)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
@@ -48,11 +54,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Email string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	json.NewDecoder(r.Body).Decode(&input)
 
-	token,err := h.service.Login(r.Context(), input.Email)
+	token,err := h.service.Login(r.Context(), input.Email, input.Password)
 	if err != nil {
 		response.Error(w, http.StatusUnauthorized, "Invalid credentials")
 		return

@@ -15,9 +15,9 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, user *User) error {
-	query := `INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id`
+	query := `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id`
 
-	return r.db.QueryRow(ctx, query, user.Name, user.Email).Scan(&user.ID)
+	return r.db.QueryRow(ctx, query, user.Name, user.Email, user.Password).Scan(&user.ID)
 }
 
 func (r *Repository) GetAll(ctx context.Context) ([]User, error) {
@@ -47,6 +47,20 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*User, error) {
 	query := `SELECT id, name, email FROM users WHERE id=$1`
 
 	err := r.db.QueryRow(ctx, query, id).Scan(&u.ID, &u.Name, &u.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (r *Repository) GetByEmail(ctx context.Context, email string) (*User, error) {
+	var u User
+
+	query := `SELECT id, name, email, password FROM users WHERE email=$1`
+
+	err := r.db.QueryRow(ctx, query, email).Scan(&u.ID, &u.Name, &u.Email, &u.Password)
+
 	if err != nil {
 		return nil, err
 	}
