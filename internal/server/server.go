@@ -7,6 +7,7 @@ import (
 	"ecommerce/internal/config"
 	"ecommerce/internal/modules/user"
 	"ecommerce/internal/middleware"
+	"ecommerce/internal/modules/auth"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -41,16 +42,21 @@ func (s *Server) registerRoutes() {
 		w.Write([]byte("OK"))
 	})
 
-	// Test Route
-	s.router.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
-		panic("something broke")
-	})
-
 	userRepo := user.NewRepository(s.db)
 	userService := user.NewService(userRepo)
 	userHandler := user.NewHandler(userService)
 
-	user.RegisterRoutes(s.router, userHandler)
+	//auth
+	authService := auth.NewService(userRepo, s.config.JWTSecret)
+	authHandler := auth.NewHandler(authService)
+	auth.RegisterRoutes(s.router, authHandler)
+
+	// protected routes
+	s.router.Group(func (r chi.Router) {
+		r.Use(middleware.Auth(s.config.JWTSecret))
+
+		user.RegisterRoutes(r, userHandler)
+	})
 }
 
 func (s *Server) Start() error {
