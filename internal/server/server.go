@@ -5,9 +5,10 @@ import (
 	"net/http"
 
 	"ecommerce/internal/config"
-	"ecommerce/internal/modules/user"
 	"ecommerce/internal/middleware"
 	"ecommerce/internal/modules/auth"
+	"ecommerce/internal/modules/product"
+	"ecommerce/internal/modules/user"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,9 +43,16 @@ func (s *Server) registerRoutes() {
 		w.Write([]byte("OK"))
 	})
 
+	//user
 	userRepo := user.NewRepository(s.db)
 	userService := user.NewService(userRepo)
 	userHandler := user.NewHandler(userService)
+
+	//product
+	productRepo := product.NewRepository(s.db)
+	productService := product.NewService(productRepo)
+	productHandler := product.NewHandler(productService)
+	product.RegisterRoutes(s.router, productHandler)
 
 	//auth
 	authService := auth.NewService(userRepo, s.config.JWTSecret)
@@ -52,10 +60,11 @@ func (s *Server) registerRoutes() {
 	auth.RegisterRoutes(s.router, authHandler)
 
 	// protected routes
-	s.router.Group(func (r chi.Router) {
+	s.router.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(s.config.JWTSecret))
 
 		user.RegisterRoutes(r, userHandler)
+		r.Post("/products", productHandler.CreateProduct)
 	})
 }
 
